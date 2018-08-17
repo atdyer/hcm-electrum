@@ -1,0 +1,63 @@
+module hcm
+
+open util/graph [Joint]
+
+sig Joint {
+	neighbors: some Joint,
+	var pending: set Joint
+}
+
+sig Fixed in Joint {}
+var sig Balanced in Joint {}
+
+fact topology {
+	noSelfLoops[neighbors]
+	undirected[neighbors]
+	stronglyConnected[neighbors]
+}
+
+fact pending_in_neighbors {
+	always all u: Joint {
+		u.pending in u.neighbors
+	}
+}
+
+----------------------------------------
+
+pred init {
+	all u: Joint | no u.pending
+}
+
+pred step {
+	(some u: Joint | release_and_distribute[u])
+	or (some u, v: Joint | carryover[u, v])
+}
+
+pred release_and_distribute [u: Joint] {
+
+	u not in Fixed
+	u not in Balanced
+	no u.pending
+
+	Balanced' = Balanced + u
+	pending' = pending + u <: neighbors
+
+}
+
+pred carryover [u, v: Joint] {
+
+	u->v in pending
+
+	pending' = pending - u->v
+	Balanced' = Balanced - v
+
+}
+
+----------------------------------------
+
+pred show {
+	init
+	always step
+}
+
+run show for 3 but exactly 3 Joint, 10 Time
