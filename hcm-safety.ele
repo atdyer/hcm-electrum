@@ -29,8 +29,16 @@ pred init {
 }
 
 pred step {
-	(some u: Joint | release_and_distribute[u])
+	stutter
+	or (some u: Joint | release_and_distribute[u])
 	or (some u, v: Joint | carryover[u, v])
+}
+
+pred stutter {
+
+	pending' = pending
+	balanced' = balanced
+
 }
 
 pred release_and_distribute [u: Joint] {
@@ -55,9 +63,44 @@ pred carryover [u, v: Joint] {
 
 ----------------------------------------
 
-pred show {
+fact traces {
 	init
 	always step
 }
 
-run show for 3 but exactly 3 Joint, 10 Time
+----------------------------------------
+
+pred can_release_and_distribute {
+	some u: Joint {
+		u not in fixed
+		u not in balanced
+		no u.pending
+	}
+}
+
+pred can_carry {
+	some u, v: Joint {
+		u->v in pending
+	}
+}
+
+pred deadlock {
+	not can_release_and_distribute
+	not can_carry
+}
+
+pred iterable_topologies {
+	some u, v: Joint {
+		u->v in neighbors
+		u not in fixed
+		v not in fixed
+		(u not in balanced or v not in balanced)
+	}
+}
+
+assert safety {
+	iterable_topologies => always not deadlock
+}
+
+check safety for 10
+
