@@ -1,0 +1,108 @@
+module hcm
+
+open util/graph [Joint]
+
+sig Joint {
+	neighbors: some Joint,
+	var pending: set Joint
+}
+
+sig fixed in Joint {}
+var sig balanced in Joint {}
+
+fact topology {
+	noSelfLoops[neighbors]
+	undirected[neighbors]
+	stronglyConnected[neighbors]
+}
+
+fact pending_in_neighbors {
+	always all u: Joint {
+		u.pending in u.neighbors
+	}
+}
+
+----------------------------------------
+
+pred init {
+	all u: Joint | no u.pending
+}
+
+pred step {
+	stutter
+	or (some u: Joint | release_and_distribute[u])
+	or (some u, v: Joint | carryover[u, v])
+}
+
+pred stutter {
+
+	pending' = pending
+	balanced' = balanced
+
+}
+
+pred release_and_distribute [u: Joint] {
+
+	u not in fixed
+	u not in balanced
+	no u.pending
+
+	balanced' = balanced + u
+	pending' = pending + u <: neighbors
+
+}
+
+pred carryover [u, v: Joint] {
+
+	u->v in pending
+
+	pending' = pending - u->v
+	balanced' = balanced - v
+
+}
+
+----------------------------------------
+
+fact traces {
+	init
+	always step
+}
+
+----------------------------------------
+
+pred can_release_and_distribute {
+	some u: Joint {
+		u not in fixed
+		u not in balanced
+		no u.pending
+	}
+}
+
+pred can_carry {
+	some u, v: Joint {
+		u->v in pending
+	}
+}
+
+pred deadlock {
+	not can_release_and_distribute
+	not can_carry
+}
+
+pred converged {
+	no u: Joint {
+		u not in fixed
+		u not in balanced
+	}
+	no u, v: Joint {
+		u->v in pending
+	}
+}
+
+assert deadlock_is_convergence {
+	always (deadlock => converged)
+}
+
+check deadlock_is_convergence for 10
+
+
