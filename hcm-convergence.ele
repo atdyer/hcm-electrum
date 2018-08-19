@@ -9,6 +9,7 @@ sig Joint {
 
 sig fixed in Joint {}
 var sig balanced in Joint {}
+var sig converged in Joint {}
 
 fact topology {
 	noSelfLoops[neighbors]
@@ -22,9 +23,16 @@ fact pending_in_neighbors {
 	}
 }
 
+fact converged_must_be_balanced {
+	always all u: Joint {
+		u in converged => u in balanced
+	}
+}
+
 ----------------------------------------
 
 pred init {
+	no converged
 	all u: Joint | no u.pending
 }
 
@@ -38,6 +46,7 @@ pred stutter {
 
 	pending' = pending
 	balanced' = balanced
+	converged' = converged
 
 }
 
@@ -49,6 +58,7 @@ pred release_and_distribute [u: Joint] {
 
 	balanced' = balanced + u
 	pending' = pending + u <: neighbors
+	converged' = converged
 
 }
 
@@ -57,11 +67,22 @@ pred carryover [u, v: Joint] {
 	u->v in pending
 
 	pending' = pending - u->v
-	balanced' = balanced - v
+
+	(balanced' = balanced + v or balanced' = balanced - v)
+	(converged' = converged + v or converged' = converged - v)
 
 }
 
 ----------------------------------------
+
+fact iterable_topologies {
+	some u, v: Joint {
+		u->v in neighbors
+		u not in fixed
+		v not in fixed
+		(u not in balanced or v not in balanced)
+	}
+}
 
 fact traces {
 	init
@@ -98,9 +119,23 @@ pred fairness {
 		}
 	}
 
+	always {
+		not model_converged => eventually {
+			not stutter
+		}
+	}
+
 }
 
-pred converged {
+pred vertices_converge {
+	eventually { 
+		all u, v: Joint { 
+			always (carryover[u, v] => converged' = converged + v)
+		}
+	}
+}
+
+pred model_converged {
 	no u: Joint {
 		u not in fixed
 		u not in balanced
@@ -108,7 +143,18 @@ pred converged {
 	no u, v: Joint {
 		u->v in pending
 	}
+	converged = Joint
 }
 
+assert convergence {
+	(fairness and vertices_converge) => eventually model_converged
+}
 
+check convergence for 6
+
+pred show {
+	fairness and vertices_converge
+}
+
+run show for 3 but exactly 2 Joint, exactly 10 Time
 
