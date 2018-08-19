@@ -156,5 +156,13 @@ pred show {
 	fairness and vertices_converge
 }
 
-run show for 3 but exactly 2 Joint, exactly 10 Time
+pred show_iteration {
+	fairness and vertices_converge
+	all u: Joint {
+		eventually { u in balanced and u not in balanced' }
+	}
+}
+
+run show for 3 but exactly 2 Joint
+run show_iteration for 5 but exactly 2 Joint
 
