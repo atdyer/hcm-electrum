@@ -9,7 +9,6 @@ sig Joint {
 
 sig fixed in Joint {}
 var sig balanced in Joint {}
-var sig converged in Joint {}
 
 fact topology {
 	noSelfLoops[neighbors]
@@ -23,20 +22,11 @@ fact pending_in_neighbors {
 	}
 }
 
-fact converged_must_be_balanced {
-	always all u: Joint {
-		u in converged => u in balanced
-	}
-}
-
 ----------------------------------------
 
 pred init {
-	-- start with no balanced joints
 	no balanced
-
-	-- start with no pending moment carryovers
-	all u: Joint | no u.pending
+	no pending
 }
 
 pred step {
@@ -46,15 +36,12 @@ pred step {
 }
 
 pred stutter {
-
 	pending' = pending
 	balanced' = balanced
-	converged' = converged
-
 }
 
 pred release_and_distribute [u: Joint] {
-
+	
 	-- u is not fixed or balanced
 	u not in fixed
 	u not in balanced
@@ -69,9 +56,6 @@ pred release_and_distribute [u: Joint] {
 	-- and they all acquire a pending moment carryover
 	pending' = pending + u <: neighbors
 
-	-- converged state does not change
-	converged' = converged
-
 }
 
 pred carryover [u, v: Joint] {
@@ -85,9 +69,6 @@ pred carryover [u, v: Joint] {
 
 	-- only v may change balanced state, all others remain unchanged
 	(balanced' = balanced + v or balanced' = balanced - v)
-
-	-- only v may change converged state, all others remain unchanged
-	(converged' = converged + v or converged' = converged - v)
 
 }
 
@@ -126,7 +107,7 @@ pred can_carry {
 }
 
 pred fairness {
-	
+
 	-- if a release and balance is possible, it will
 	-- eventually happen
 	always {
@@ -143,27 +124,18 @@ pred fairness {
 		}
 	}
 
-	-- as long as the model is not converged, we'll
-	-- eventually not stutter
-	always {
-		not model_converged => eventually {
-			not stutter
-		}
-	}
-
-
 }
 
-pred vertices_converge {
-
-	-- eventually, for all possible carryovers, carryover results
-	-- in a converged state. this implies that at some point a
-	-- carryover from u to v will never unbalance the joint v
-	eventually { 
-		all u, v: Joint { 
-			always (carryover[u, v] => converged' = converged + v)
+pred carryovers_converge {
+	
+	-- eventually, for all possible carryovers, the carryover
+	-- does not cause the receiving joint to become unbalanced
+	eventually {
+		all u, v: Joint {
+			always (carryover[u, v] => balanced' = balanced + v)
 		}
 	}
+
 }
 
 pred model_converged {
@@ -171,17 +143,18 @@ pred model_converged {
 	-- there are no pending moment carryovers
 	no pending
 
-	-- all joints are converged (and thus balanced)
-	converged = Joint
+	-- all non-fixed joints are balanced
+	all u: Joint | u not in fixed => u in balanced
 
 }
+
 
 --
 -- check that the model will converge
 --
 
 assert convergence {
-	(fairness and vertices_converge) => eventually model_converged
+	(fairness and carryovers_converge) => eventually model_converged
 }
 
 check convergence for 6
@@ -192,7 +165,7 @@ check convergence for 6
 --
 
 pred show {
-	fairness and vertices_converge
+	fairness and carryovers_converge
 }
 
 run show for 3
@@ -205,14 +178,21 @@ run show for 3
 
 pred show_iteration {
 	fairness
-	vertices_converge
+	carryovers_converge
 	all u: Joint {
 		eventually { u in balanced and u not in balanced' }
 	}
 }
 
--- Time = (4 * #joint) + 1
 run show_iteration for 3 but exactly 2 Joint
 run show_iteration for 3 but exactly 3 Joint, exactly 13 Time
 run show_iteration for 3 but exactly 4 Joint, exactly 17 Time
+
+
+
+
+
+
+
+
 
