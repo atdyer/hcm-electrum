@@ -1,0 +1,43 @@
+module hcm_convergence
+
+open hcm
+
+fact {
+	converging_model
+}
+
+pred fairness {
+
+	-- if a release and balance is possible, it will
+	-- eventually happen
+	always {
+		(some u: Joint | can_release_and_distribute[u]) => eventually { 
+			some u: Joint | release_and_distribute[u] 
+		}
+	}
+
+	-- if a carryover is possible, it will eventually
+	-- happen
+	always {
+		(some u, v: Joint | can_carryover[u, v]) => eventually { 
+			some u, v: Joint | carryover[u, v] 
+		}
+	}
+
+}
+
+pred model_converged {
+
+	-- there are no pending moment carryovers
+	no pending
+
+	-- all non-fixed joints are balanced
+	all u: Joint | u not in fixed => u in balanced
+
+}
+
+assert convergence {
+	iterable_topologies and traces and fairness => eventually model_converged
+}
+
+check convergence for 6

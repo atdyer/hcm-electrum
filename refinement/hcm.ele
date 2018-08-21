@@ -1,0 +1,159 @@
+module hcm
+
+open util/graph [Joint]
+
+sig Joint {
+	neighbors: some Joint,
+	var pending: set Joint
+}
+
+sig fixed in Joint {}
+var sig balanced in Joint {}
+
+fact topology {
+	noSelfLoops[neighbors]
+	undirected[neighbors]
+	stronglyConnected[neighbors]
+}
+
+fact pending_in_neighbors {
+	always all u: Joint {
+		u.pending in u.neighbors
+	}
+}
+
+----------------------------------------
+
+pred init {
+	no balanced
+	no pending
+}
+
+pred step {
+	stutter
+	or (some u: Joint | release_and_distribute[u])
+	or (some u, v: Joint | carryover[u, v])
+}
+
+pred stutter {
+	pending' = pending
+	balanced' = balanced
+}
+
+pred can_release_and_distribute [u: Joint] {
+
+	-- u is not fixed or balanced
+	u not in fixed
+	u not in balanced
+
+	-- there are no pending carryovers away from u
+	no u.pending
+
+}
+
+pred can_carryover [u, v: Joint] {
+
+	-- there is a pending moment carryover from u to v
+	u->v in pending
+
+}
+
+pred release_and_distribute [u: Joint] {
+	
+	can_release_and_distribute[u]
+
+	-- only u may change balanced state, and it becomes balanced
+	balanced' = balanced + u
+
+	-- only carryovers originating at u may change pending state,
+	-- and they all acquire a pending moment carryover
+	pending' = pending + u <: neighbors
+
+}
+
+pred carryover [u, v: Joint] {
+
+	can_carryover[u, v]
+
+	-- in the next state there is no longer a pending carryover
+	-- from u to v, and all other pending states remain the same
+	pending' = pending - u->v
+
+	-- only v may change balanced state, all others remain unchanged
+	(balanced' = balanced + v or balanced' = balanced - v)
+
+}
+
+----------------------------------------
+
+
+-- Use this predicate to limit the state space to valid moment
+-- distribution problems, where we begin with no balanced joints
+-- or carryovers and proceed by either stuttering, releasing,
+-- or carrying a moment ad infinitum.
+pred traces {
+	init
+	always step
+}
+
+-- This predicate can be used to remove cases in which the model
+-- either begins in a deadlocked state or can 'converge' in a
+-- single iteration.
+pred iterable_topologies {
+	some u, v: Joint {
+		u->v in neighbors
+		u not in fixed
+		v not in fixed
+		(u not in balanced or v not in balanced)
+	}
+}
+
+-- This predicate can be used to enable an infinite model, i.e., one
+-- that never converges. This is enabled by requiring that a carryover
+-- always makes the receiving joint become unbalanced.
+pred infinite_model {
+	always {
+		all u, v: Joint | carryover[u, v] => v not in balanced'
+	}
+}
+
+-- This predicate can be used to enable a model that eventually
+-- converges. This is enabled by requiring that all carryovers
+-- will eventually never cause the receiving joint to become
+-- unbalanced.
+pred converging_model {
+	eventually {
+		all u, v: Joint {
+			always (carryover[u, v] => v in balanced')
+		}
+	}
+}
+
+----------------------------------------
+
+-- generate a case that converges
+pred converged_case {
+	iterable_topologies and
+	traces and
+	eventually {
+		no pending
+		all u: Joint | u not in fixed => u in balanced
+	}
+}
+
+run converged_case for 3
+
+
+-- generate a case that never converges
+pred non_converged_case {
+	traces and always not stutter
+}
+
+run non_converged_case for 3
+
+
+
+
+
+
+

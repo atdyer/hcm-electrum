@@ -1,0 +1,22 @@
+module hcm_safety
+
+open hcm
+
+fact {
+	infinite_model
+}
+
+pred deadlock {
+	traces
+	eventually {
+		all u: Joint { not can_release_and_distribute[u] }
+		all u, v: Joint { not can_carryover[u, v] }
+	}
+}
+
+assert progress_never_deadlocks {
+	(iterable_topologies and traces) => not deadlock
+}
+
+run deadlock for 3 but exactly 5 Time
+check progress_never_deadlocks for 3
