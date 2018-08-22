@@ -1,0 +1,88 @@
+open hcm
+
+fact {
+	infinite_model
+}
+
+----------------------------------------
+
+-- Add machinery necessary for red-black ordering
+sig Red, Black in Joint {}
+var sig Active in Joint {}
+
+-- Every joint will be either red or black
+fact {
+	Red + Black = Joint
+	disj[Red, Black]
+}
+
+-- Only one color will be active
+fact {
+	always Active = Red or Active = Black
+}
+
+-- Adjacent joints cannot be the same color
+pred red_black_topology {
+	no u, v: Joint {
+		u->v in neighbors
+		(u in Red and v in Red) or (u in Black and v in Black)
+	}
+}
+
+----------------------------------------
+
+pred init_RB {
+	init
+	red_black_topology
+}
+
+
+pred joints_finished_processing [js: set Joint] {
+
+	all u: js {
+
+		-- there are no pending moment carryovers to u
+		no pending :> u
+
+		-- u is balanced
+		u in balanced
+
+	}
+
+}
+
+pred alternate_colors {
+	
+	not joints_finished_processing[Active] => {
+		Active' = Active
+		some u: Active {
+			release_and_distribute[u] or
+			some v: Joint {
+				carryover[v, u]
+			}
+		}
+	}
+
+	joints_finished_processing[Active] => {
+		stutter
+		Active' = Joint - Active
+	}
+
+}
+
+pred show {
+	some Joint
+	init_RB
+	always alternate_colors
+}
+
+run show for 3
+
+assert refines {
+	(init_RB and always alternate_colors)
+	=>
+	(init and always step)
+}
+
+check refines for 6
+

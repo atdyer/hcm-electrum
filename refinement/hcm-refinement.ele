@@ -8,15 +8,15 @@ fact {
 
 ----------------------------------------
 
--- Add machinery necessary for refinement.
+-- Add machinery necessary for message passing.
 var sig Test, Send, Recv in Joint {}
 
 
 -- Every joint will be in exactly one of the 
 -- three program counter states
 fact {
-	Test + Send + Recv = Joint
-	disj[Test, Send, Recv]
+	always Test + Send + Recv = Joint
+	always disj[Test, Send, Recv]
 }
 
 ----------------------------------------
