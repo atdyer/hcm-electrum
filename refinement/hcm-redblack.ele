@@ -71,12 +71,11 @@ pred alternate_colors {
 }
 
 pred show {
-	some Joint
 	init_RB
 	always alternate_colors
 }
 
-run show for 3
+run show for exactly 4 Joint, exactly 17 Time
 
 assert refines {
 	(init_RB and always alternate_colors)

@@ -4,7 +4,7 @@ open util/graph [Joint]
 
 sig Joint {
 	neighbors: some Joint,
-	var pending: set Joint
+	var pending: set neighbors
 }
 
 sig fixed in Joint {}
@@ -16,7 +16,7 @@ fact topology {
 	stronglyConnected[neighbors]
 }
 
-fact pending_in_neighbors {
+check pending_in_neighbors {
 	always all u: Joint {
 		u.pending in u.neighbors
 	}

@@ -1,0 +1,42 @@
+open hcm
+
+fact {
+	infinite_model
+	always no balanced
+	no fixed
+}
+
+----------------------------------------
+
+pred process [u: Joint] {
+
+	-- all pending to u
+	neighbors :> u in pending
+
+	-- no pending to u
+	-- all pending from u
+	pending' = pending - neighbors :> u + u <: neighbors
+
+}
+
+pred initp {
+
+	-- one carryover implies all carryover from a joint
+	all u: Joint {
+		some u.pending => u.neighbors = u.pending
+	}
+
+	-- no carryovers in both directions
+	all u, v: Joint {
+		u->v in pending => v->u not in pending
+	}
+}
+
+pred tracesp {
+	initp
+	always one u: Joint | process[u]
+}
+
+fun P: Joint { { u: Joint | neighbors :> u in pending } }
+
+run tracesp for 3 but exactly 3 Joint
